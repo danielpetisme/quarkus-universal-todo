@@ -1,38 +1,78 @@
 package me.escoffier.model;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
-import io.quarkus.panache.common.Sort;
+import org.hibernate.annotations.Generated;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
+import javax.persistence.*;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import java.util.List;
-import java.util.Optional;
 
 @Entity
-public class Todo extends PanacheEntity  {
+public class Todo {
+
+    @Id
+    @GeneratedValue(strategy= GenerationType.SEQUENCE)
+    private Long id;
 
     @NotBlank
-    public String title;
+    private String title;
 
-    public boolean completed;
+    private boolean completed;
 
     @Column(name = "ordering")
-    public int order;
+    private int order;
 
     @NotNull
-    public String owner;
+    private String owner;
 
-    public static List<Todo> getTodos(String owner) {
-        return list("owner", Sort.by("order"), owner);
+    public Long getId() {
+        return id;
     }
 
-    public static void clearCompleted(String owner) {
-        delete("owner = ?1 and completed = ?2", owner, true);
+    public void setId(Long id) {
+        this.id = id;
     }
 
-    public static Optional<Todo> getTodo(String owner, Long id) {
-        return find("owner = ?1 and id = ?2", owner, id).firstResultOptional();
+    public String getTitle() {
+        return title;
     }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public boolean isCompleted() {
+        return completed;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.completed = completed;
+    }
+
+    public int getOrder() {
+        return order;
+    }
+
+    public void setOrder(int order) {
+        this.order = order;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
+    }
+
+//    public static List<Todo> getTodos(String owner) {
+//        return list("owner", Sort.by("order"), owner);
+//    }
+//
+//    public static void clearCompleted(String owner) {
+//        delete("owner = ?1 and completed = ?2", owner, true);
+//    }
+//
+//    public static Optional<Todo> getTodo(String owner, Long id) {
+//        return find("owner = ?1 and id = ?2", owner, id).firstResultOptional();
+//    }
 }

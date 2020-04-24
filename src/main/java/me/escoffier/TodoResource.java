@@ -1,81 +1,95 @@
 package me.escoffier;
 
-import io.quarkus.security.identity.SecurityIdentity;
 import me.escoffier.model.Todo;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticatedPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.security.RolesAllowed;
-import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.validation.Valid;
-import javax.ws.rs.*;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
+import javax.websocket.server.PathParam;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 
-@Path("/api")
-@Produces("application/json")
-@Consumes("application/json")
-@RolesAllowed("user")
+@RestController
+@RequestMapping(value = "/api")
+@RolesAllowed({"ROLE_USER"})
 public class TodoResource {
 
-    @Inject
-    SecurityIdentity securityIdentity;
+    private final TodoRepository todoRepository;
 
-    @GET
-    public List<Todo> getAll() {
-        return Todo.getTodos(getCurrentUser());
+    public TodoResource(TodoRepository todoRepository) {
+        this.todoRepository = todoRepository;
     }
 
-    @GET
-    @Path("/{id}")
-    public Todo getOne(@PathParam("id") Long id) {
-        return Todo.getTodo(getCurrentUser(), id).orElseThrow(
-                () ->  new WebApplicationException("Todo with id of " + id + " does not exist.", Status.NOT_FOUND)
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<Todo> getAll() {
+        return todoRepository.findAllByOwnerIgnoreCase(getCurrentUser());
+    }
+
+    @GetMapping(path = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Todo getOne(@PathVariable("id") Long id) {
+        return todoRepository.findByOwnerAndId(getCurrentUser(), id).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Todo with id of " + id + " does not exist.")
         );
     }
 
-    @POST
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @Transactional
-    public Response create(@Valid Todo item) {
-        item.owner = getCurrentUser();
-        item.persist();
-        return Response.status(Status.CREATED).entity(item).build();
+    public ResponseEntity<Todo> create(@Valid @RequestBody Todo item) throws URISyntaxException {
+        item.setOwner(getCurrentUser());
+        Todo result = todoRepository.save(item);
+        return ResponseEntity.created(new URI("/api/" + result.getId())).body(result);
     }
 
-    @PATCH
-    @Path("/{id}")
+    @PatchMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @Transactional
-    public Response update(@Valid Todo todo, @PathParam("id") Long id) {
-        Todo entity = Todo.findById(id);
-        entity.id = id;
-        entity.completed = todo.completed;
-        entity.order = todo.order;
-        entity.title = todo.title;
-        entity.owner = getCurrentUser();
-        return Response.ok(entity).build();
+    public ResponseEntity<Todo> update(@Valid @RequestBody Todo todo, @PathVariable("id") Long id) {
+        Todo entity = todoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Todo with id of " + id + " does not exist."));
+        entity.setId(id);
+        entity.setCompleted(todo.isCompleted());
+        entity.setOrder(todo.getOrder());
+        entity.setTitle(todo.getTitle());
+        entity.setOwner(getCurrentUser());
+        Todo result = todoRepository.save(entity);
+        return ResponseEntity.ok(result);
     }
 
-    @DELETE
+    @DeleteMapping
     @Transactional
-    public Response deleteCompleted() {
-        Todo.clearCompleted(getCurrentUser());
-        return Response.noContent().build();
+    public ResponseEntity<Void> deleteCompleted() {
+        todoRepository.clearCompleted(getCurrentUser());
+        return ResponseEntity.noContent().build();
     }
 
-    @DELETE
+    @DeleteMapping("/{id}")
     @Transactional
-    @Path("/{id}")
-    public Response deleteOne(@PathParam("id") Long id) {
-        Todo entity = Todo.findById(id);
-        if (entity == null) {
-            throw new WebApplicationException("Todo with id of " + id + " does not exist.", Status.NOT_FOUND);
-        }
-        entity.delete();
-        return Response.noContent().build();
+    public ResponseEntity<Void> deleteOne(@PathVariable("id") Long id) {
+        Todo entity = todoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Todo with id of " + id + " does not exist."));
+        todoRepository.delete(entity);
+        return ResponseEntity.noContent().build();
     }
 
     private String getCurrentUser() {
-        return securityIdentity.getPrincipal().getName();
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        }
+        if (principal instanceof AuthenticatedPrincipal) {
+            return ((AuthenticatedPrincipal) principal).getName();
+        }
+        return principal.toString();
     }
 
 }
