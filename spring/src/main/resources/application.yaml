@@ -1,0 +1,30 @@
+logging.level:
+  org.springframework.security: DEBUG
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/quarkus_test
+    driver: org.postgresql.Driver
+    username: quarkus_test
+    password: quarkus_test
+  jpa:
+    hibernate.ddl-auto: create-drop
+    databas: POSTGRESQL
+
+
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: app
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8180/auth/realms/quarkus
+            user-name-attribute: preferred_username
+
+app:
+  frontend:
+    oidc-realm: quarkus
+    oidc-app: app
+    oidc-server: http://localhost:8180/auth
