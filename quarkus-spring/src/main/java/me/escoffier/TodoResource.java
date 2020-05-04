@@ -41,7 +41,7 @@ public class TodoResource {
     @ResponseBody
     public Todo getOne(@PathVariable("id") Long id) {
         return todoRepository.findByOwnerAndId(getCurrentUser(), id).orElseThrow(
-                () -> new ResponseServerStatus("Todo with id of " + id + " does not exist.", 404)
+                () -> new ResponseServerStatusException("Todo with id of " + id + " does not exist.", 404)
         );
     }
 
@@ -57,7 +57,7 @@ public class TodoResource {
     @Transactional
     public ResponseEntity<Todo> update(@Valid @RequestBody Todo todo, @PathVariable("id") Long id) {
         Todo entity = todoRepository.findByOwnerAndId(getCurrentUser(), id)
-                .orElseThrow(() -> new ResponseServerStatus("Todo with id of " + id + " does not exist.", 404));
+                .orElseThrow(() -> new ResponseServerStatusException("Todo with id of " + id + " does not exist.", 404));
         entity.setId(id);
         entity.setCompleted(todo.isCompleted());
         entity.setOrder(todo.getOrder());
@@ -78,7 +78,7 @@ public class TodoResource {
     @Transactional
     public ResponseEntity<Void> deleteOne(@PathVariable("id") Long id) {
         Todo entity = todoRepository.findById(id)
-                .orElseThrow(() -> new ResponseServerStatus("Todo with id of " + id + " does not exist.", 404));
+                .orElseThrow(() -> new ResponseServerStatusException("Todo with id of " + id + " does not exist.", 404));
         todoRepository.delete(entity);
         return ResponseEntity.noContent().build();
     }
