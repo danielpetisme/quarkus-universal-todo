@@ -3,6 +3,7 @@ package me.escoffier;
 import io.quarkus.security.identity.SecurityIdentity;
 import me.escoffier.model.Todo;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,7 +42,7 @@ public class TodoResource {
     @ResponseBody
     public Todo getOne(@PathVariable("id") Long id) {
         return todoRepository.findByOwnerAndId(getCurrentUser(), id).orElseThrow(
-                () -> new ResponseServerStatusException("Todo with id of " + id + " does not exist.", 404)
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Todo with id of " + id + " does not exist.")
         );
     }
 
@@ -57,7 +58,7 @@ public class TodoResource {
     @Transactional
     public ResponseEntity<Todo> update(@Valid @RequestBody Todo todo, @PathVariable("id") Long id) {
         Todo entity = todoRepository.findByOwnerAndId(getCurrentUser(), id)
-                .orElseThrow(() -> new ResponseServerStatusException("Todo with id of " + id + " does not exist.", 404));
+                .orElseThrow(() -> ResponseStatusException(HttpStatus.NOT_FOUND, "Todo with id of " + id + " does not exist."));
         entity.setId(id);
         entity.setCompleted(todo.isCompleted());
         entity.setOrder(todo.getOrder());
@@ -78,7 +79,7 @@ public class TodoResource {
     @Transactional
     public ResponseEntity<Void> deleteOne(@PathVariable("id") Long id) {
         Todo entity = todoRepository.findById(id)
-                .orElseThrow(() -> new ResponseServerStatusException("Todo with id of " + id + " does not exist.", 404));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Todo with id of " + id + " does not exist."));
         todoRepository.delete(entity);
         return ResponseEntity.noContent().build();
     }
